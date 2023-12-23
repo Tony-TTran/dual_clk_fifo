@@ -1,0 +1,75 @@
+module Two_clk_FIFO(wr_ptr, rd_ptr,buf_out,buf_empty,buf_full,count,wr_en,rd_en,buf_in,clk_1,clk_2,rst);
+
+input clk_1, clk_2, rst, wr_en, rd_en;
+input [7:0] buf_in;
+
+output buf_empty, buf_full;
+output [6:0] count, wr_ptr, rd_ptr;
+output [7:0] buf_out;
+
+reg buf_empty, buf_full;
+reg [7:0] buf_out,buf_mem[63:0];
+reg [7:0] count,wr_ptr, rd_ptr;
+
+
+
+// Determines if buffer memory is full
+always @(count) begin
+	case(count)
+		7'b0 : buf_empty <= 1;
+		7'b1000000 : buf_full <= 1;
+		default :begin
+						buf_empty <= 0;
+						buf_full <= 0;
+					end
+	endcase			
+
+end
+
+
+
+// The following always block iterates count, which tracks the space in the buffer memory
+always @(posedge clk_1 or posedge clk_2 or posedge rst) begin
+	case(rst)
+		1: count <= 0;
+		
+		0:begin 
+				if (clk_1 && !buf_full && wr_en) begin
+					count <= count + 1;
+				end else begin
+					if(clk_2 && !buf_empty && rd_en)
+						count <= count - 1;
+					end
+			end
+		
+		endcase
+	
+end
+
+
+// The following always block deals with reading and writing into memory
+always @(posedge clk_1 or posedge clk_2 or posedge rst) begin
+	case(rst)
+		1 : begin
+			buf_out <= 0;
+			wr_ptr <= 0;
+			rd_ptr <= 0;
+			end
+		0 : begin
+				if(clk_1 && (!buf_full && wr_en)) begin
+					buf_mem[wr_ptr] <= buf_in;
+					wr_ptr <= wr_ptr + 1;
+				 end else begin
+					if(clk_2 && (!buf_empty && rd_en))
+						buf_out = buf_mem[rd_ptr];
+						rd_ptr <= rd_ptr + 1;
+					end
+			 end
+		
+	endcase
+end
+
+// Incrementing pointer position
+
+
+endmodule
